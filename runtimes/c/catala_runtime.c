@@ -1230,21 +1230,21 @@ CATALA_BOOL o_xor (CATALA_BOOL x1, CATALA_BOOL x2)
   return CATALA_NEW_BOOL(*x1 != *x2);
 }
 
-CATALA_INT o_add_int_int (CATALA_INT x1, CATALA_INT x2)
+const CATALA_INT o_add_int_int (CATALA_INT x1, CATALA_INT x2)
 {
   CATALA_NEW_MPZ(ret);
   mpz_add(ret, x1, x2);
   return ret;
 }
 
-CATALA_DEC o_add_rat_rat (CATALA_DEC x1, CATALA_DEC x2)
+const CATALA_DEC o_add_rat_rat (CATALA_DEC x1, CATALA_DEC x2)
 {
   CATALA_NEW_MPQ(ret);
   mpq_add(ret, x1, x2);
   return ret;
 }
 
-CATALA_MONEY o_add_mon_mon (CATALA_MONEY x1, CATALA_MONEY x2)
+const CATALA_MONEY o_add_mon_mon (CATALA_MONEY x1, CATALA_MONEY x2)
 {
   CATALA_NEW_MPZ(ret);
   mpz_add(ret, x1, x2);
@@ -1762,3 +1762,110 @@ void* catala_do(void* (*f)(void))
   has_jump_buffer = 0;
   return retval;
 }
+
+/* ---- Deep copy helpers ---- */
+
+CATALA_BOOL catala_copy_bool (CATALA_BOOL b) {
+  int* ret = malloc(sizeof(CATALA_BOOL));
+  if (!ret) return NULL; 
+  *ret = *b;
+  return ret;
+}
+
+CATALA_UNIT catala_copy_unit (CATALA_UNIT u) {
+  return CATALA_UNITVAL;
+}
+
+const CATALA_INT catala_copy_int (const CATALA_INT i) {
+  mpz_ptr ret;
+  ret = malloc(sizeof(__mpz_struct));
+  if (!ret) return NULL;
+  mpz_init_set(ret, i);
+  return ret;
+}
+
+const CATALA_DEC catala_copy_dec (const CATALA_DEC d) {
+  mpq_ptr ret;
+  ret = malloc(sizeof(__mpq_struct));
+  if (!ret) return NULL;
+  mpq_init(ret);
+  mpq_set(ret, d);
+  return ret;  
+}
+
+const CATALA_MONEY catala_copy_money (const CATALA_MONEY m) {
+  mpz_ptr ret;
+  ret = malloc(sizeof(__mpz_struct));
+  if (!ret) return NULL;
+  mpz_init_set(ret, m);
+  return ret;  
+}
+
+CATALA_DATE catala_copy_date(CATALA_DATE d)
+{
+  dc_date *ret;
+  int success;
+  ret = malloc(sizeof(dc_date));
+  if (!ret) return NULL;
+  success = dc_make_date(ret, dc_date_year(d), dc_date_month(d), dc_date_day(d));
+  /* This could fail, but is expected to only be called with known, already
+     validated arguments by the generated code */
+  assert(success == dc_ok);
+  return ret;
+}
+
+CATALA_DURATION catala_copy_duration(CATALA_DURATION d)
+{
+  dc_period* ret = malloc(sizeof(dc_period));
+  dc_make_period(ret, dc_period_years(d),dc_period_months(d),dc_period_days(d));
+  return ret;
+}
+
+const CATALA_OPTION(_) catala_copy_option (const CATALA_OPTION(_) opt, const void* (*copy_payload)(const void*)) {
+  CATALA_OPTION(X) ret;
+  ret = malloc(sizeof(CATALA_OPTION(X)));
+  if (!ret) return NULL;
+  if (catala_isnone(opt)) *ret = catala_none;
+  else {
+    ret->code = opt->code;
+    ret->payload = copy_payload(opt->payload);
+  }
+  return ret;
+}
+
+const CATALA_ARRAY(_) catala_copy_array (const CATALA_ARRAY(_) arr, const void* (*copy_elt)(const void*)) {
+  CATALA_ARRAY(X) ret;
+  int i, size;
+  const void **elements;
+  ret = malloc(sizeof(CATALA_ARRAY(X)));
+  if (!ret) return NULL;
+  size = arr-> size;
+  if (size < 0) return NULL; /* Should not happen, but... we never know. */
+  elements = malloc(size * sizeof(void*));
+  if (!elements) return NULL;
+  ret->size = size;
+  ret->elements = elements;
+  for (i = 0; i < size; i++)
+    ret->elements[i] = copy_elt(arr->elements[i]);
+  return ret;
+}
+
+/* The extra arguments are the copy functions for each tuple element. */
+const CATALA_TUPLE(_) catala_copy_tuple(const CATALA_TUPLE(_) tup, const int size, ...) {
+  int i;
+  va_list args;
+  tuple_element* ret;
+  void *(*copy)(const void *);
+  if (size < 0) return NULL;
+  if (tup == NULL) return NULL; 
+  ret = malloc(size * sizeof(tuple_element));
+  if (!ret) return NULL;
+  va_start (args, size);
+  for (i = 0; i < size; i++) {
+    copy = va_arg(args, void*(*)(const void*));
+    ret[i].content = copy(tup[i].content);
+  }
+  va_end(args);
+  return ret;
+}
+

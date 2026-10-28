@@ -453,4 +453,26 @@ void* catala_do(void* (*f)(void));
    print a message to stderr (with source position when applicable), and return
    NULL. Use [register_error_handler] to customise this behaviour. */
 
+/* ---- Deep copy helpers ---- */
+
+CATALA_BOOL catala_copy_bool (CATALA_BOOL b);
+
+CATALA_UNIT catala_copy_unit (CATALA_UNIT u);
+
+const CATALA_INT catala_copy_int (const CATALA_INT i);
+
+const CATALA_DEC catala_copy_dec (const CATALA_DEC d);
+
+const CATALA_MONEY catala_copy_money (const CATALA_MONEY m);
+
+CATALA_DATE catala_copy_date(CATALA_DATE d);
+
+CATALA_DURATION catala_copy_duration(CATALA_DURATION d);
+
+const CATALA_OPTION(_) catala_copy_option (const CATALA_OPTION(_) opt, const void*(*copy_payload)(const void*));
+
+const CATALA_ARRAY(_) catala_copy_array (const CATALA_ARRAY(_) arr, const void* (*copy_elt)(const void*));
+ 
+const CATALA_TUPLE(_) catala_copy_tuple(const CATALA_TUPLE(_) tup, const int size, ...);
+
 #endif /* __CATALA_RUNTIME_H__ */
