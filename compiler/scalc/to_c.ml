@@ -1293,10 +1293,11 @@ let format_program
     (Option.map File.(fun f -> basename f -.- "h") output_file);
 
   (* TODO: check the module hash ? *)
-  let ctx =
-    { decl_ctx = p.ctx.decl_ctx; module_name = Option.map fst p.module_name }
-  in
+  let module_name = Option.map fst p.module_name in
+  let ctx = { decl_ctx = p.ctx.decl_ctx; module_name } in
   format_ctx type_ordering ~ppc ~pph ctx;
+  To_c_copy_utils.format_types_deep_copy ?module_name ctx.decl_ctx type_ordering
+    ~ppc ~pph;
   ppall "@,";
   let env =
     {
